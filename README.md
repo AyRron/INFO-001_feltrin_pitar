@@ -12,17 +12,49 @@
 > Rappeler le calcul réalisé pour chiffrer ce message en utilisant RSA. Rappeler comment l’opération inverse (déchiffrement) est réalisée.
 > 
 
+- Formule de chiffrement : $C \equiv M^e \pmod n$ .
+- Formule de déchiffrement : $M \equiv C^d \pmod n$.
+- $d$ est l’inverse modulaire de $e$ modulo $\varphi(n)$.
+
 ## Question 2)
 
 > Rappeler le rôle de la méthode Diffie-Hellman.
 > 
 
-Le rôle de la méthode Diffie-Hellman est de générer une clé de session éphémère qui ne pourra jamais être retrouvée.
+Le rôle de la méthode Diffie–Hellman est de **permettre à deux correspondants d’établir une clé secrète commune** sur un canal non sécurisé, **sans jamais échanger directement cette clé** .
+
+Cette clé servira ensuite de **clé de session (souvent éphémère)** pour chiffrer les communications.
 
 ## Question 3)
 
 > Donner 4 informations importantes contenues dans un certificat
 > 
+
+### 1. **L’identité du propriétaire**
+
+- Nom de domaine ou organisation à laquelle le certificat est délivré.
+- Exemples :
+    - `CN = www.exemple.com` (Common Name)
+    - `O = Exemple SARL`, `C = FR`
+
+### 2. **La clé publique du propriétaire**
+
+- C’est la **clé publique RSA, ECC, etc.** associée au propriétaire du certificat.
+
+### 3. **Les informations sur l’autorité de certification (CA)**
+
+- Le **nom de la CA** qui a signé le certificat.
+- Sa **signature numérique** sur le certificat.
+
+### 4. **La période de validité**
+
+- Deux dates :
+    - `Not Before` → début de validité,
+    - `Not After` → expiration du certificat.
+- Nom de domaine ou organisation à laquelle le certificat est délivré.
+- Exemples :
+    - `CN = www.feltrima.fr` (Common Name)
+    - `O = Exemple SARL`, `C = FR`
 
 ## Question 4)
 
@@ -239,12 +271,41 @@ openssl verify -CAfile cert2.pem -untrusted cert1.pem cert0.pem
 
 - Le certificat de dernier niveau (le plus haut avant la racine) est signé par la **racine**.
 
+```bash
+openssl verify -CAfile root-ca1.pem -untrusted cert1.pem cert0.pem
+
+# >>> cert0.pem: OK
+```
+
 ## Question 19)
 
 > Comparer les champs subject et issuer. Qu’en déduisez-vous ? 
 Donnez la formule qui a permis de générer la signature de ce certificat ? 
 Comment s’appelle ce type de certificat ?
 > 
+
+Les champs **Subject** et **Issuer** sont identiques :
+
+```mathematica
+Subject: C = US, O = The USERTRUST Network, CN = USERTrust ECC Certification Authority
+Issuer:  C = US, O = The USERTRUST Network, CN = USERTrust ECC Certification Authority
+```
+
+Cela signifie que le certificat s’est **signé lui-même**, il s’agit donc d’un **certificat racine auto-signé**.
+
+La signature a été calculée selon la formule :
+
+$$
+Signature = \text{Chiffrer}_{\text{Clé privée du signataire}}(H(\text{Données du certificat}))
+$$
+
+soit, ici :
+
+$$
+Signature = \text{RSA}_{\text{Clé privée de USERTrust RSA}}(\text{SHA-384}(\text{TBS\_Certificate}))
+$$
+
+**Type de certificat :** certificat racine auto-signé (*self-signed root CA certificate*).
 
 ## Question 20)
 
@@ -256,6 +317,103 @@ Qu’est-ce qui vous permet de dire qu’il s’agit d’un certificat « racine
 Pour quels « X509v3 Key Usage » cette autorité de certification peut-elle être utilisée ?
 > 
 
+Le certificat de l’autorité de certification racine est défini dans le fichier de configuration `openssl.cnf` à la ligne :
+
+```
+certificate = $dir/certs/ca.cert.pem
+```
+
+soit le chemin complet :
+
+`/home/camanager/ca/certs/ca.cert.pem`.
+
+L’analyse du contenu du certificat avec la commande :
+
+```bash
+openssl x509 -in /home/camanager/ca/certs/ca.cert.pem -noout -text
+```
+
+### 🔹 **Type de clé utilisée**
+
+Le champ `Public Key Algorithm` indique :
+
+```
+Public Key Algorithm: id-ecPublicKey
+```
+
+➡️ Cela signifie que la clé utilisée est une **clé elliptique (EC)**.
+
+---
+
+### 🔹 **Taille et courbe utilisée**
+
+Les lignes suivantes précisent :
+
+```
+Public-Key: (256 bit)
+ASN1 OID: prime256v1
+NIST CURVE: P-256
+```
+
+➡️ La clé est donc de **256 bits**, basée sur la **courbe elliptique NIST P-256 (prime256v1)**.
+
+---
+
+### 🔹 **Algorithme de signature**
+
+Le certificat est signé avec :
+
+```
+Signature Algorithm: ecdsa-with-SHA256
+```
+
+➡️ Il utilise l’algorithme **ECDSA avec SHA-256** pour la signature.
+
+---
+
+### 🔹 **Durée de validité**
+
+Le bloc `Validity` indique :
+
+```
+Not Before: Nov  1 14:42:40 2025 GMT
+Not After : Oct 27 14:42:40 2045 GMT
+```
+
+➡️ La durée de validité du certificat est de **20 ans**.
+
+---
+
+### 🔹 **Auto-signature / certificat racine**
+
+Les champs `Subject` et `Issuer` sont identiques :
+
+```
+Subject: C=FR, ST=Savoie, L=Chambéry, O=TP Sécurité, CN=Root Lorne
+Issuer:  C=FR, ST=Savoie, L=Chambéry, O=TP Sécurité, CN=Root Lorne
+```
+
+➡️ Cela prouve que le certificat a été **signé par lui-même**.
+
+C’est donc un **certificat auto-signé**, également appelé **certificat racine**.
+
+---
+
+### 🔹 **Usages autorisés (X509v3 Key Usage)**
+
+```
+X509v3 Key Usage: critical
+    Digital Signature, Certificate Sign, CRL Sign
+```
+
+➡️ Cette autorité de certification peut :
+
+- **Signer d’autres certificats** (autorités intermédiaires ou serveurs)
+- **Signer les listes de révocation (CRL)**
+- **Effectuer des signatures numériques**
+
+---
+
 ## Question 21)
 
 > Quelle valeur avez-vous mise dans le paramètre dir de la section CA_default ? 
@@ -263,15 +421,55 @@ Dans quel dossier et sous quel nom la clé privée de la CA devra-t-elle être s
 Dans quel dossier et sous quel nom le certificat de la CA devra-t-il être stocké ?
 > 
 
+```bash
+dir = /home/etudiant/ca
+```
+
+Selon la ligne suivante du fichier `openssl.cnf` :
+
+```bash
+private_key = $dir/private/intermediate.key.pem
+```
+
+➡️ La clé privée sera donc stockée dans :
+
+```
+/home/etudiant/ca/private/intermediate.key.pem
+```
+
+Selon cette ligne :
+
+```bash
+certificate = $dir/certs/intermediate.cert.pem
+```
+
+➡️ Le certificat sera stocké dans :
+
+```
+/home/etudiant/ca/certs/intermediate.cert.pem
+```
+
 ## Question 22)
 
 > Relever la commande saisie pour créer la clé.
 > 
 
+```bash
+openssl genrsa -aes128 -passout pass:feltrima -out private/intermediate.key.pem 3072
+```
+
 ## Question 23)
 
 > Pourquoi est-ce que la présence de cette signature peut être qualifiée d’incongru ?
 > 
+
+Cette signature peut sembler **incongrue** car elle apparaît avant que le certificat ne soit signé par une autorité de certification.
+
+Toutefois, elle est indispensable : elle garantit que la demande provient bien du détenteur de la clé privée et que son contenu n’a pas été altéré avant la signature officielle par la CA.
+
+```bash
+openssl x509 -in certs/feltrima.cert.pem -noout -text
+```
 
 ## Question 24)
 
@@ -279,15 +477,74 @@ Dans quel dossier et sous quel nom le certificat de la CA devra-t-il être stock
 sera utilisée par le serveur ?
 > 
 
+La clé du serveur doit être générée **directement sur la machine tls-serv-feltrima** (le serveur web) puisque la **clé privée du serveur** doit rester **confidentielle** et **ne jamais quitter la machine** où elle sera utilisée.
+
+Seule la **demande de signature (CSR)** sera envoyée à l’autorité de certification intermédiaire.
+
+```bash
+sudo openssl genrsa -out /etc/pki/tls/private/serveur_http.pem 2048
+```
+
+```bash
+sudo openssl req -new -key /etc/pki/tls/private/serveur_http.pem \
+-out serveur_http.csr.pem \
+-subj "/C=FR/ST=Rhone/L=Lyon/O=Canut feltrima inc./CN=www.feltrima.fr" \
+-addext "subjectAltName = DNS:www.feltrima.fr, DNS:dev.feltrima.fr"
+```
+
+```bash
+openssl req -in serveur_http.csr.pem -noout -text
+```
+
+```bash
+openssl ca -config openssl.cnf -extensions server_cert \
+-days 375 -notext -md sha256 \
+-in csr/serveur_http.csr.pem \
+-out certs/serveur_http.cert.pem
+```
+
+```bash
+sudo cp /etc/pki/tls/private/serveur_http.pem nginx-reverse/ssl/
+cp /etc/pki/tls/certs/serveur_http.cert.pem nginx-reverse/ssl/
+```
+
+```bash
+http://192.168.170.121/
+# L'URL / et toutes les URL autres que /admin/ sont servies par web1.
+
+http://192.168.170.121/picture/
+# Picture web1
+
+http://192.168.170.121/admin/
+# L'URL /admin/ et les sous URL de /admin/ sont servies par web2.
+
+http://192.168.170.121/admin/styles/
+# Styles web2
+```
+
 ## Question 25)
 
 > Justifier que la 3ème solution est la plus pertinente.
 > 
 
+La troisième solution est la plus pertinente, car :
+
+- Elle repose sur le **principe hiérarchique de la PKI** : une autorité racine (Root Lorne) signe les autorités intermédiaires, qui elles-mêmes signent les certificats serveurs.
+- Faire confiance **uniquement à la racine** permet de **valider automatiquement toute la chaîne de certification**sans avoir à installer plusieurs certificats.
+- C’est la **solution la plus simple à administrer et la plus sécurisée**, car la racine est unique et protégée, et sa confiance s’étend à tous les certificats qu’elle autorise.
+
+```bash
+sudo update-ca-trust extract
+```
+
 ## Question 26)
 
 > Quelle modification (ligne modifiée ou ajoutée) avez-vous effectuée dans le fichier hosts ?
 > 
+
+```bash
+192.168.170.121   www.feltrima.fr
+```
 
 ## Question 27)
 
