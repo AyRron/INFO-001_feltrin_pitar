@@ -73,8 +73,6 @@ minimum, **toutes** les étapes pour l’authentification du site de Alice.
 > Est-ce problématique ?
 > 
 
-**Réponse guidée :**
-
 - Le **n** (modulus) fait **1024 bits**, c’est-à-dire la longueur de la clé RSA.
 - Le **chiffrement** RSA se fait avec la formule :
     
@@ -122,7 +120,7 @@ minimum, **toutes** les étapes pour l’authentification du site de Alice.
 > Pourquoi est-il intéressant de disposer d’un fichier à part contenant uniquement la clé publique ?
 > 
 
-- Oui ✅ : on retrouve bien le **modulus (n)** et le **public exponent (e)**.
+- Oui : on retrouve bien le **modulus (n)** et le **public exponent (e)**.
 - Il est intéressant d’avoir un fichier séparé car :
     - on peut **le diffuser librement** à d’autres utilisateurs,
     - cela **évite tout risque de fuite** de la clé privée,
